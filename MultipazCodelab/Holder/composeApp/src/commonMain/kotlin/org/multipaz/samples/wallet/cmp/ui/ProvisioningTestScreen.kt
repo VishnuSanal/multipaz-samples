@@ -1,9 +1,12 @@
 package org.multipaz.samples.wallet.cmp.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,15 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import org.multipaz.provisioning.ProvisioningModel
-import org.multipaz.util.Logger
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import org.koin.compose.koinInject
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
+import org.multipaz.provisioning.ProvisioningModel
 import org.multipaz.samples.wallet.cmp.util.ProvisioningSupport
+import org.multipaz.util.Logger
 
 @Composable
 fun ProvisioningTestScreen(
@@ -91,6 +91,25 @@ fun ProvisioningTestScreen(
 
             else -> {
                 //TODO: update text depends on provisioningState
+                val text = when (provisioningState) {
+                    ProvisioningModel.Idle -> "Initializing..."
+                    ProvisioningModel.Initial -> "Starting provisioning..."
+                    ProvisioningModel.Connected -> "Connected to the back-end"
+                    ProvisioningModel.ProcessingAuthorization -> "Processing authorization..."
+                    ProvisioningModel.Authorized -> "Authorized"
+                    ProvisioningModel.RequestingCredentials -> "Requesting credentials..."
+                    ProvisioningModel.CredentialsIssued -> "Credentials issued"
+                    is ProvisioningModel.Error -> throw IllegalStateException()
+                    is ProvisioningModel.Authorizing -> throw IllegalStateException()
+                }
+                Text(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(8.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    text = text
+                )
+
             }
         }
     }
@@ -109,7 +128,13 @@ private fun Authorize(
                 EvidenceRequestWebView,
                 "Authorize: Rendering EvidenceRequestWebView for OAuth challenge"
             )
+
             //TODO: init  EvidenceRequestWebView
+            EvidenceRequestWebView(
+                evidenceRequest = challenge,
+                provisioningModel = provisioningModel,
+                provisioningSupport = provisioningSupport
+            )
         }
 
         is AuthorizationChallenge.SecretText -> TODO()
@@ -152,7 +177,11 @@ fun EvidenceRequestWebView(
             EvidenceRequestWebView,
             "EvidenceRequestWebView LaunchedEffect invokedUrl: $invokedUrl"
         )
+
         //TODO: add provideAuthorizationResponse
+        provisioningModel.provideAuthorizationResponse(
+            AuthorizationResponse.OAuth(stableEvidenceRequest.id, invokedUrl)
+        )
     }
     val uriHandler = LocalUriHandler.current
     LaunchedEffect(stableEvidenceRequest.url) {

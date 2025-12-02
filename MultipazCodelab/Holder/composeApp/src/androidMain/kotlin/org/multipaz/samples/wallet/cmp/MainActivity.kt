@@ -89,7 +89,7 @@ class MainActivity : FragmentActivity() {
             CoroutineScope(Dispatchers.Default).launch {
                 try {
                     Logger.i(TAG, "handleUrl: About to process app link invocation")
-                    //TODO: call processAppLinkInvocation(url)
+                    provisioningSupport.processAppLinkInvocation(url)
                     Logger.i(TAG, "handleUrl: App link invocation processed successfully")
                 } catch (e: Exception) {
                     Logger.e(TAG, "Error processing app link: ${e.message}", e)

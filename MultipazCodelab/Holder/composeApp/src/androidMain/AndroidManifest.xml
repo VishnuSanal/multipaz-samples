@@ -10,43 +10,50 @@
     <uses-feature
         android:name="android.hardware.bluetooth_le"
         android:required="true" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- Request legacy Bluetooth permissions on older devices. -->
-    <uses-permission android:name="android.permission.BLUETOOTH"
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
         android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
         android:maxSdkVersion="30" />
 
     <!-- For NFC engagement -->
     <uses-feature
         android:name="android.hardware.nfc"
         android:required="false" />
+
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:usesCleartextTraffic="true"
+        android:name=".UtopiaSampleApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:name=".UtopiaSampleApplication"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:usesCleartextTraffic="true">
         <activity
-            android:exported="true"
-            android:enableOnBackInvokedCallback="true"
+            android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
-            android:launchMode="singleInstance"
-            android:name=".MainActivity">
+            android:enableOnBackInvokedCallback="true"
+            android:exported="true"
+            android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -60,10 +67,12 @@
             <!-- Must match ApplicationSupportLocal.APP_LINK_SERVER -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="wholesale-test-app"/>
-                <data android:host="landing"/>
+
+                <data android:scheme="wholesale-test-app" />
+                <data android:host="landing" />
             </intent-filter>
 
             <!-- Option #2 - HTTPS App Links - Requires .well-known/assetlinks.json -->
@@ -88,28 +97,30 @@
             <!-- Examples: openid-credential-offer://, haip:// -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <!--  OpenId Credential Offer scheme (OID4VCI) -->
-                <data android:scheme="openid-credential-offer"/>
+                <data android:scheme="openid-credential-offer" />
                 <!--  High Assurance Interoperability Profile -->
-                <data android:scheme="haip"/>
+                <data android:scheme="haip" />
                 <!-- Accept all hosts for any of the defined schemes above -->
-                <data android:host="*"/>
+                <data android:host="*" />
             </intent-filter>
 
         </activity>
 
         <activity
             android:name=".CredmanActivity"
-            android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
-            android:theme="@android:style/Theme.Translucent"
+            android:excludeFromRecents="true"
+            android:exported="true"
             android:launchMode="singleInstance"
-            android:excludeFromRecents="true">
+            android:theme="@android:style/Theme.Translucent">
             <intent-filter>
                 <action android:name="androidx.credentials.registry.provider.action.GET_CREDENTIAL" />
                 <action android:name="androidx.identitycredentials.action.GET_CREDENTIALS" />
+
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -120,14 +131,26 @@
         -->
         <activity
             android:name=".NfcActivity"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
-            android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|layoutDirection|locale|mcc|navigation|smallestScreenSize|touchscreen|uiMode"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:showWhenLocked="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen"
-            android:launchMode="singleInstance">
-        </activity>
+            android:turnScreenOn="true" />
 
-        <!-- TODO: Add this NdefService-->
+        <service
+            android:name=".NdefService"
+            android:exported="true"
+            android:label="@string/nfc_ndef_service_description"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/nfc_ndef_service" />
+        </service>
+
     </application>
 </manifest>
