@@ -7,3 +7,4 @@ object Constants {
     const val APP_NAME = "UtopiaSample"
     val appIcon = Res.drawable.profile
 }
+
