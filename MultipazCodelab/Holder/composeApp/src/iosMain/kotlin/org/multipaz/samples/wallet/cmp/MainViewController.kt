@@ -49,7 +49,7 @@ fun MainViewController() =
             Logger.i(TAG, "iOS: Starting eager initialization of Koin dependencies")
             try {
                 // Trigger initialization of all singletons that use runBlocking
-                val koinHelper = object : KoinComponent { }
+                val koinHelper = object : KoinComponent {}
                 koinHelper.get<TrustManager>() // This loads certificates with runBlocking
                 koinHelper.get<DocumentStore>()
                 koinHelper.get<ProvisioningModel>()
@@ -84,8 +84,18 @@ fun MainViewController() =
  * Called from SwiftUI's .onOpenURL modifier.
  */
 
-//TODO: implement HandleUrl for iOS
-@Suppress("FunctionName") // Swift interop: follows Swift naming convention for exported functions
 fun HandleUrl(url: String) {
+    // Retrieve dependencies from Koin
+    val credentialOffers = globalCredentialOffers ?: return
+    val koinHelper = object : KoinComponent {}
+    val provisioningModel = koinHelper.get<ProvisioningModel>()
+    val provisioningSupport = koinHelper.get<ProvisioningSupport>()
 
+    // Call common handler
+    org.multipaz.samples.wallet.cmp.util.handleUrl(
+        url = url,
+        credentialOffers = credentialOffers,
+        provisioningModel = provisioningModel,
+        provisioningSupport = provisioningSupport,
+    )
 }

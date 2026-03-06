@@ -26,7 +26,24 @@ fun handleUrl(
     provisioningModel: ProvisioningModel,
     provisioningSupport: ProvisioningSupport,
 ) {
-    // TODO: Implement URL handling and validation
+    if (url.startsWith(OID4VCI_CREDENTIAL_OFFER_URL_SCHEME) || url.startsWith(HAIP_URL_SCHEME)) {
+        // Process credential offers
+        val queryIndex = url.indexOf('?')
+        if (queryIndex >= 0) {
+            CoroutineScope(Dispatchers.Default).launch {
+                credentialOffers.send(url)
+            }
+        }
+    } else if (url.startsWith(ProvisioningSupport.APP_LINK_BASE_URL)) {
+        // Process OAuth callbacks
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                provisioningSupport.processAppLinkInvocation(url)
+            } catch (e: Exception) {
+                Logger.e(TAG, "Error processing app link: ${e.message}", e)
+            }
+        }
+    }
 }
 
 

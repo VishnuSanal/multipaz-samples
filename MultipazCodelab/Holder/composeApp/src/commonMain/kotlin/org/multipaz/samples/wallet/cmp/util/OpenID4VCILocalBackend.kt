@@ -11,8 +11,11 @@ class OpenID4VCILocalBackend : OpenID4VCIBackend {
 
 
     override suspend fun createJwtClientAssertion(authorizationServerIdentifier: String): String =
-        // TODO: create and assign JWT client assertion string
-
+        OpenID4VCIBackendUtil.createJwtClientAssertion(
+            signingKey = clientAssertionKey,
+            clientId = CLIENT_ID,
+            authorizationServerIdentifier = authorizationServerIdentifier,
+        )
 
     override suspend fun createJwtWalletAttestation(keyAttestation: KeyAttestation): String =
         OpenID4VCIBackendUtil.createWalletAttestation(
