@@ -1,0 +1,31 @@
+{
+  "server_port": 8110,
+  "database_engine": "ephemeral",
+  "admin_password": "multipaz",
+  "records_server_url": "http://localhost:8100/registry",
+  "client_requirements": {
+    "android": {
+      "gms_attestation": false,
+      "verified_boot_green": false,
+      "keystore_security_level": "software",
+      "app_signature_certificate_digests": [
+        "66:BA:A1:9A:34:33:AD:09:08:7B:4B:87:67:15:C3:08:B0:E8:C7:3B:CD:08:22:28:9C:F2:4F:49:F8:A6:5B:EE"
+      ],
+      "app_packages": [
+        "org.multipaz.pos"
+      ]
+    }
+  },
+  "server_identities": {
+    "payment_processor": {
+      "kty": "EC",
+      "crv": "P-256",
+      "d": "Ysrfraugy40KXiGrquWyW8P-u91BcoAhT-veHpywu9E",
+      "x": "S08uwWcsA8sCWlbuYFw8rYJtXkg3-Wm4nV-L0jxMxrs",
+      "y": "Awakb3mtz-ljqGtIdBsKH_llia9FZeWokljEZgJOUjw",
+      "x5c": [
+        "MIIBuzCCAWKgAwIBAgIBAjAKBggqhkjOPQQDAjBDMQswCQYDVQQGDAJVUzE0MDIGA1UEAwwrVXRvcGlhIFdob2xlc2FsZSBQT1MgUGF5bWVudCBQcm9jZXNzb3IgUm9vdDAeFw0yNjA4MDUxNTQxNDFaFw0zNjA4MDMxNTQxNDFaMDgxCzAJBgNVBAYMAlVTMSkwJwYDVQQDDCBVdG9waWEgV2hvbGVzYWxlIFBPUyBUZXJtaW5hbCAwMTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABEtPLsFnLAPLAlpW7mBcPK2CbV5IN/lpuJ1fi9I8TMa7Awakb3mtz+ljqGtIdBsKH/llia9FZeWokljEZgJOUjyjUjBQMB8GA1UdIwQYMBaAFMRBtnd4avN+88q5/gFc7GyWYXCOMA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQUOJwLrlkFBUgU83wFyiLYCqfbIZAwCgYIKoZIzj0EAwIDRwAwRAIgNSXmj0Vx6PWp72YnjtyOQATghpva/5S6rI+nBfU4oUICIBFSdsoicw1fZ8cGmVkFJmKrtLwTmnb8XLEUZyC8VJNy"
+      ]
+    }
+  }
+}
