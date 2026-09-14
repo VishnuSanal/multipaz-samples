@@ -56,7 +56,6 @@ import org.multipaz.compose.permissions.rememberBluetoothEnabledState
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.compose.permissions.rememberCameraPermissionState
 import org.multipaz.compose.qrcode.QrCodeScanner
-import org.multipaz.crypto.SecurityException
 import org.multipaz.documenttype.ISO_18013_TRANSACTION_DATA_NAMESPACE
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
@@ -163,7 +162,10 @@ fun ProximityScreen(
     }
 
     val nfcTagReader = NfcTagReader.getReaders().firstOrNull()
-    LaunchedEffect(scanMode) {
+    LaunchedEffect(scanMode, blePermissionState.isGranted, bleEnabledState.isEnabled) {
+        if (!blePermissionState.isGranted || !bleEnabledState.isEnabled) {
+            return@LaunchedEffect
+        }
         if (proximityReaderModel.state.value == ProximityReaderModel.State.IDLE && scanMode == ProximityScanMode.NFC && onNfcHandover != null) {
             if (nfcTagReader != null && !nfcTagReader.dialogAlwaysShown) {
                 withContext(Platform.promptModel) {
@@ -194,18 +196,12 @@ fun ProximityScreen(
                             if (scanResult != null) {
                                 break
                             }
-                        } catch (e: Throwable) {
-                            if (!isActive) {
-                                Logger.e(
-                                    TAG, "Caught exception while scanning and scope isn't active", e
-                                )
-                                break
-                            } else if (e is SecurityException) {
-                                Logger.e(TAG, "SecurityException while scanning, stopping scan", e)
-                                break
-                            } else {
-                                Logger.e(TAG, "Caught exception while scanning. Retrying", e)
-                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Logger.e(TAG, "Error scanning, stopping scan", e)
+                            onTransferError(e)
+                            break
                         }
                     }
                 }
