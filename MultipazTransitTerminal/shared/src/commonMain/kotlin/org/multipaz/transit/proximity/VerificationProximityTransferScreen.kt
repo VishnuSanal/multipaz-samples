@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,10 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,18 +46,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.multipaz.cbor.DataItem
-import org.multipaz.compose.camera.CameraCaptureResolution
-import org.multipaz.compose.camera.CameraSelection
-import org.multipaz.compose.permissions.rememberBluetoothEnabledState
-import org.multipaz.compose.permissions.rememberBluetoothPermissionState
-import org.multipaz.compose.permissions.rememberCameraPermissionState
-import org.multipaz.compose.qrcode.QrCodeScanner
 import org.multipaz.documenttype.ISO_18013_TRANSACTION_DATA_NAMESPACE
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.documenttype.knowntypes.PaymentTransaction
 import org.multipaz.documenttype.knowntypes.PhotoID
-import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.nfc.MdocReaderNfcHandoverOptions
 import org.multipaz.mdoc.nfc.ScanMdocReaderResult
 import org.multipaz.mdoc.nfc.scanMdocReader
@@ -75,15 +64,12 @@ import org.multipaz.mdoc.request.buildDeviceRequest
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.nfc.NfcTagReader
 import org.multipaz.transit.Constants
-import org.multipaz.transit.payment.ProximityScanMode
 import org.multipaz.transit.payment.RpcPaymentSettler
 import org.multipaz.transit.ui.GhostButton
-import org.multipaz.transit.ui.PrimaryButton
 import org.multipaz.transit.ui.TransitTheme
 import org.multipaz.transit.ui.type
 import org.multipaz.util.Logger
 import org.multipaz.util.Platform
-import org.multipaz.util.UUID
 import org.multipaz.utopia.knowntypes.DigitalPaymentCredential
 import org.multipaz.verification.Iso18013PresentmentRecord
 
@@ -96,17 +82,11 @@ fun ProximityScreen(
     amountCents: Long? = null,
     gateTap: GateTap,
     onBackClicked: () -> Unit,
-    onTransferComplete: suspend (presentmentRecord: Iso18013PresentmentRecord, method: ProximityScanMode) -> Unit,
+    onTransferComplete: suspend (presentmentRecord: Iso18013PresentmentRecord) -> Unit,
     onTransferError: (error: Throwable) -> Unit,
     onNfcHandover: (suspend (ScanMdocReaderResult) -> Unit)? = null,
-    onQrCodeScanned: (suspend (String) -> Unit)? = null,
 ) {
-    val blePermissionState = rememberBluetoothPermissionState()
-    val bleEnabledState = rememberBluetoothEnabledState()
-
     val coroutineScope = rememberCoroutineScope { Platform.promptModel }
-
-    var scanMode by remember { mutableStateOf<ProximityScanMode>(ProximityScanMode.NFC) }
 
     val proximityReaderModelState = proximityReaderModel.state.collectAsState().value
 
@@ -151,7 +131,6 @@ fun ProximityScreen(
             ProximityReaderModel.State.COMPLETED -> {
                 handleTransferOutcome(
                     outcome = proximityReaderModel.outcome,
-                    method = scanMode,
                     onTransferComplete = onTransferComplete,
                     onTransferError = onTransferError,
                 )
@@ -162,33 +141,27 @@ fun ProximityScreen(
     }
 
     val nfcTagReader = NfcTagReader.getReaders().firstOrNull()
-    LaunchedEffect(scanMode, blePermissionState.isGranted, bleEnabledState.isEnabled) {
-        if (!blePermissionState.isGranted || !bleEnabledState.isEnabled) {
-            return@LaunchedEffect
-        }
-        if (proximityReaderModel.state.value == ProximityReaderModel.State.IDLE && scanMode == ProximityScanMode.NFC && onNfcHandover != null) {
-            if (nfcTagReader != null && !nfcTagReader.dialogAlwaysShown) {
+
+    LaunchedEffect(Unit) {
+        if (proximityReaderModel.state.value == ProximityReaderModel.State.IDLE && onNfcHandover != null) {
+            if (nfcTagReader != null) {
                 withContext(Platform.promptModel) {
                     while (isActive) {
                         try {
                             val scanResult = nfcTagReader.scanMdocReader(
-                                message = null,
-                                options = MdocTransportOptions(
-                                    bleUseL2CAP = false,               // Doesn't work with Apple Wallet
-                                    bleUseL2CAPInEngagement = true
-                                ),
+                                message = if (nfcTagReader.dialogAlwaysShown) {
+                                    "Hold your device near the terminal"
+                                } else {
+                                    null
+                                },
+                                options = MdocTransportOptions(),
                                 handoverOptions = MdocReaderNfcHandoverOptions(
                                     useNfcV2 = true
                                 ),
-                                selectConnectionMethod = { connectionMethods -> connectionMethods.first() },
-                                negotiatedHandoverConnectionMethods = listOf(
-                                    MdocConnectionMethodBle(
-                                        supportsPeripheralServerMode = false,
-                                        supportsCentralClientMode = true,
-                                        peripheralServerModeUuid = null,
-                                        centralClientModeUuid = UUID.randomUUID(),
-                                    )
-                                ),
+                                selectConnectionMethod = { connectionMethods ->
+                                    connectionMethods.singleOrNull()
+                                },
+                                negotiatedHandoverConnectionMethods = emptyList(),
                                 onHandover = { scanResult ->
                                     onNfcHandover(scanResult)
                                     scanResult
@@ -209,60 +182,18 @@ fun ProximityScreen(
         }
     }
 
-    val idle = proximityReaderModelState == ProximityReaderModel.State.IDLE
-
     Column(Modifier.fillMaxSize()) {
         Box(
             Modifier.weight(1f).fillMaxWidth().padding(horizontal = 26.dp),
             contentAlignment = Alignment.Center,
         ) {
             when {
-                !blePermissionState.isGranted -> PermissionPrompt(
-                    headline = "Bluetooth needed",
-                    body = "The gate reads the rider's wallet over Bluetooth once they tap.",
-                    action = "Allow Bluetooth",
-                    onClick = {
-                        coroutineScope.launch { blePermissionState.launchPermissionRequest() }
-                    },
-                )
-
-                !bleEnabledState.isEnabled -> PermissionPrompt(
-                    headline = "Bluetooth is off",
-                    body = "Turn Bluetooth on to finish reading credentials after the tap.",
-                    action = "Turn on Bluetooth",
-                    onClick = { coroutineScope.launch { bleEnabledState.enable() } },
-                )
-
-                !idle -> ReadingState(gateTap)
-
-                scanMode == ProximityScanMode.NFC -> TapAtGate(gateTap)
-
-                else -> QrScanState(
-                    onQrCodeScanned = { qrCode ->
-                        if (qrCode?.startsWith("mdoc:") == true && onQrCodeScanned != null) {
-                            if (proximityReaderModel.state.value == ProximityReaderModel.State.IDLE) {
-                                coroutineScope.launch {
-                                    onQrCodeScanned(qrCode)
-                                }
-                            }
-                        }
-                    },
-                )
+                proximityReaderModelState != ProximityReaderModel.State.IDLE -> ReadingState(gateTap)
+                else -> TapAtGate(gateTap)
             }
         }
 
-        CheckoutFooter(
-            scanMode = scanMode,
-            showModeToggle = idle && blePermissionState.isGranted && bleEnabledState.isEnabled,
-            onToggleMode = {
-                scanMode = if (scanMode == ProximityScanMode.NFC) {
-                    ProximityScanMode.QR
-                } else {
-                    ProximityScanMode.NFC
-                }
-            },
-            onCancel = onBackClicked,
-        )
+        CheckoutFooter(onCancel = onBackClicked)
     }
 }
 
@@ -418,8 +349,7 @@ private suspend fun createCheckoutRequest(
  */
 private suspend fun handleTransferOutcome(
     outcome: ProximityReaderOutcome?,
-    method: ProximityScanMode,
-    onTransferComplete: suspend (presentmentRecord: Iso18013PresentmentRecord, method: ProximityScanMode) -> Unit,
+    onTransferComplete: suspend (presentmentRecord: Iso18013PresentmentRecord) -> Unit,
     onTransferError: (error: Throwable) -> Unit,
 ) {
     when (outcome) {
@@ -438,7 +368,7 @@ private suspend fun handleTransferOutcome(
                     encryptionInfo = null,
                     origin = null
                 )
-                onTransferComplete(presentmentRecord, method)
+                onTransferComplete(presentmentRecord)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -600,83 +530,9 @@ private fun ReadingState(gateTap: GateTap) {
     }
 }
 
-/** Fallback path for wallets that engage by QR rather than by tapping the gate. */
-@Composable
-private fun QrScanState(onQrCodeScanned: (qrCode: String?) -> Unit) {
-    val c = TransitTheme.colors
-    val type = TransitTheme.type
-    val coroutineScope = rememberCoroutineScope()
-    val cameraPermissionState = rememberCameraPermissionState()
-
-    if (!cameraPermissionState.isGranted) {
-        PermissionPrompt(
-            headline = "Camera needed",
-            body = "The gate scans the code shown by the rider's wallet.",
-            action = "Allow camera",
-            onClick = {
-                coroutineScope.launch { cameraPermissionState.launchPermissionRequest() }
-            },
-        )
-        return
-    }
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(16.dp))
-                .border(1.dp, c.border, RoundedCornerShape(16.dp))
-        ) {
-            QrCodeScanner(
-                modifier = Modifier.fillMaxSize(),
-                cameraSelection = CameraSelection.DEFAULT_BACK_CAMERA,
-                captureResolution = CameraCaptureResolution.HIGH,
-                showCameraPreview = true,
-                onCodeScanned = onQrCodeScanned,
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Text("Show your code", style = type.headline, color = c.ink)
-        Spacer(Modifier.height(7.dp))
-        Text(
-            "Hold the wallet's QR code inside the frame.",
-            style = type.body,
-            color = c.ink.copy(alpha = 0.55f),
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun PermissionPrompt(
-    headline: String,
-    body: String,
-    action: String,
-    onClick: () -> Unit,
-) {
-    val c = TransitTheme.colors
-    val type = TransitTheme.type
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(headline, style = type.headline, color = c.ink, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(7.dp))
-        Text(
-            body,
-            style = type.body,
-            color = c.ink.copy(alpha = 0.55f),
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(20.dp))
-        PrimaryButton(label = action, onClick = onClick)
-    }
-}
-
 /** Quiet controls the rider only needs if the tap is not working out. */
 @Composable
 private fun CheckoutFooter(
-    scanMode: ProximityScanMode,
-    showModeToggle: Boolean,
-    onToggleMode: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val c = TransitTheme.colors
@@ -684,14 +540,6 @@ private fun CheckoutFooter(
         Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (showModeToggle) {
-            GhostButton(
-                label = if (scanMode == ProximityScanMode.NFC) "Use QR code" else "Use tap",
-                color = c.ink.copy(alpha = 0.6f),
-                modifier = Modifier.weight(1f),
-                onClick = onToggleMode,
-            )
-        }
         GhostButton(
             label = "Cancel",
             color = c.error,

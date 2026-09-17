@@ -4,5 +4,7 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NFCReaderUsageDescription</key>
+	<string>Utopia Transit uses NFC to read a rider's payment credential.</string>
 </dict>
 </plist>

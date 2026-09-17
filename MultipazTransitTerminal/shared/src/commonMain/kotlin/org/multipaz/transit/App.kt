@@ -23,7 +23,6 @@ import org.multipaz.transit.proximity.GateTap
 import org.multipaz.transit.proximity.ProximityReaderModel
 import org.multipaz.transit.proximity.ProximityScreen
 import org.multipaz.transit.proximity.handleNfcHandover
-import org.multipaz.transit.proximity.handleQrCodeScanned
 import org.multipaz.transit.ui.DocPhase
 import org.multipaz.transit.ui.SettlementFailureScreen
 import org.multipaz.transit.ui.SettlementSuccessScreen
@@ -99,12 +98,6 @@ fun App() {
                                     proximityReaderModel = proximityReaderModel
                                 )
                             },
-                            onQrCodeScanned = { qrCode ->
-                                handleQrCodeScanned(
-                                    mdocUrl = qrCode,
-                                    proximityReaderModel = proximityReaderModel
-                                )
-                            },
                             onBackClicked = {
                                 state.cancel(
                                     SettlementResult.Declined(
@@ -112,7 +105,7 @@ fun App() {
                                     )
                                 )
                             },
-                            onTransferComplete = { presentmentRecord, method ->
+                            onTransferComplete = { presentmentRecord ->
                                 try {
                                     val claims = extractPresentedClaims(presentmentRecord)
                                     val paymentInstrumentId = requireNotNull(
@@ -219,12 +212,6 @@ fun App() {
                                     proximityReaderModel = proximityReaderModel
                                 )
                             },
-                            onQrCodeScanned = { qrCode ->
-                                handleQrCodeScanned(
-                                    mdocUrl = qrCode,
-                                    proximityReaderModel = proximityReaderModel
-                                )
-                            },
                             onBackClicked = {
                                 state.cancel(
                                     SettlementResult.Declined(
@@ -232,7 +219,7 @@ fun App() {
                                     )
                                 )
                             },
-                            onTransferComplete = { presentmentRecord, method ->
+                            onTransferComplete = { presentmentRecord ->
                                 try {
                                     val claims = extractPresentedClaims(presentmentRecord)
                                     val exitCard = requireNotNull(claims.card) {
@@ -254,7 +241,6 @@ fun App() {
                                         SettlementResult.Approved(
                                             transactionId = transactionId,
                                             amountCents = state.settledCents,
-                                            method = method,
                                             timestampEpochMillis =
                                                 Clock.System.now().toEpochMilliseconds(),
                                             card = exitCard,

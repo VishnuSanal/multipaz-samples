@@ -5,7 +5,6 @@ sealed interface SettlementResult {
     data class Approved(
         val transactionId: String,
         val amountCents: Long,
-        val method: ProximityScanMode,
         val timestampEpochMillis: Long,
         /** Payment card read from the presented DPC. */
         val card: PaymentCardDetails? = null,

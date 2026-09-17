@@ -2,12 +2,6 @@ package org.multipaz.transit.payment
 
 import kotlinx.serialization.Serializable
 
-@Serializable
-enum class ProximityScanMode {
-    QR,
-    NFC
-}
-
 enum class AgeDiscount(val fareClass: String) {
     None("STANDARD"),
     Child("CHILD"),

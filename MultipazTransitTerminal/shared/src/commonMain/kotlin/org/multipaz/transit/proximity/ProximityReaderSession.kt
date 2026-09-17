@@ -20,8 +20,7 @@ import kotlin.time.Duration
  * transcript binding the exchange to this engagement, so [ProximityReaderModel] can hold one
  * nullable session instead of a nullable field per parameter.
  *
- * @property handover the handover as defined in ISO/IEC 18013-5, or [org.multipaz.cbor.Simple.NULL]
- *   for QR engagement.
+ * @property handover the NFCv2 handover as defined in ISO/IEC 18013-5 Second Edition.
  * @property existingTransport the transport the engagement was received on, if it can be reused, or
  *   `null` to create one from the connection methods in the engagement.
  * @property nfcHandoverType the kind of NFC handover which produced the engagement, or `null` if it
@@ -44,8 +43,7 @@ internal class ProximityReaderSession private constructor(
 ) {
     companion object {
         /**
-         * Creates a session for the holder described by [encodedDeviceEngagement], which was either
-         * received over NFC or scanned from a QR code.
+     * Creates a session for the holder described by an NFCv2 [encodedDeviceEngagement].
          */
         suspend fun create(
             encodedDeviceEngagement: DataItem,

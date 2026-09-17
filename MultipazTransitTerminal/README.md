@@ -61,7 +61,7 @@ The primary configuration points are:
 ## Prerequisites
 
 - JDK 17.
-- Android Studio with an Android SDK, plus an Android device or emulator running API 29 or newer.
+- Android Studio with an Android SDK, plus a physical NFC-capable Android device running API 29 or newer.
 - `adb` when using a physical Android device.
 - A compatible Multipaz Utopia records server and a holder wallet containing a DPC
   (`org.multipaz.payment.sca.1`). The records server must trust the DPC issuer, trust this
@@ -164,4 +164,4 @@ configuration. A mismatch prevents the app from registering with the backend.
 | Registration / attestation fails   | The APK package or signing digest differs from the backend configuration.                                        | Update `client_requirements` to match the installed build.                 |
 | Payment transaction is rejected    | The records server does not trust the DPC issuer or terminal payment-processor root, or the accounts are absent. | Configure the same trust roots and seed the payer plus account `30000001`. |
 | The second tap fails               | A different DPC was presented at checkout.                                                                       | Present the same credential used at check-in.                              |
-| NFC does not start                 | Device NFC is disabled or unsupported; Bluetooth is also required for the handover.                              | Enable NFC and Bluetooth, or use the QR + BLE path.                        |
+| NFC does not start                 | Device NFC is disabled or unsupported, or the wallet does not support NFCv2.                                     | Enable NFC and use an NFCv2-compatible wallet.                             |
