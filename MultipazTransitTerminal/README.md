@@ -85,8 +85,9 @@ Start a Multipaz Utopia server that is compatible with the snapshot dependency d
 ./gradlew run
 ```
 
-The backend's default is `http://localhost:8004`. If the records server is elsewhere, pass its base
-URL when starting the backend. The backend adds `/rpc` itself:
+The backend's default is the deployed Utopia Registry at
+`https://utopia.multipaz.org/registry`. For a local Docker Utopia bundle, override it as below.
+The backend adds `/rpc` itself:
 
 ```bash
 ./gradlew :transitBackend:run --args="-param records_server_url=http://localhost:8100/registry"
@@ -100,6 +101,10 @@ URL when starting the backend. The backend adds `/rpc` itself:
 
 The default backend listens on port `8011`. Confirm it is available at
 `http://localhost:8011/`; it responds with `MultipazTransitTerminal backend is running`.
+
+The Android app defaults to its public terminal URL,
+`https://utopia.multipaz.org/transit-terminal/rpc`. For local `adb reverse`
+development, temporarily switch `DEFAULT_TERMINAL_URL` to `http://localhost:8011/rpc`.
 
 ### 3. Install the Android app and expose the backend
 
