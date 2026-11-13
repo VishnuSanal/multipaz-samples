@@ -30,7 +30,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,8 +66,11 @@ import org.multipaz.mdoc.request.TransactionsInfo
 import org.multipaz.mdoc.request.UseCase
 import org.multipaz.mdoc.request.buildDeviceRequest
 import org.multipaz.mdoc.transport.MdocTransportOptions
+import org.multipaz.nfc.ExternalNfcReaderStore
 import org.multipaz.nfc.NfcTagReader
 import org.multipaz.transit.Constants
+import org.multipaz.transit.nfc.SelectNfcReaderDialog
+import org.multipaz.transit.nfc.resolveNfcTagReader
 import org.multipaz.transit.payment.RpcPaymentSettler
 import org.multipaz.transit.ui.GhostButton
 import org.multipaz.transit.ui.TransitTheme
@@ -81,6 +88,9 @@ fun ProximityScreen(
     paymentSettler: RpcPaymentSettler,
     amountCents: Long? = null,
     gateTap: GateTap,
+    externalNfcReaderStore: ExternalNfcReaderStore? = null,
+    selectedReaderId: String? = null,
+    onSelectNfcReader: (String?) -> Unit = {},
     onBackClicked: () -> Unit,
     onTransferComplete: suspend (presentmentRecord: Iso18013PresentmentRecord) -> Unit,
     onTransferError: (error: Throwable) -> Unit,
@@ -140,9 +150,21 @@ fun ProximityScreen(
         }
     }
 
-    val nfcTagReader = NfcTagReader.getReaders().firstOrNull()
+    // The reader to scan with: the configured external reader when it is connected (USB
+    // permission requested on the fly), otherwise the built-in reader - resolved in a
+    // produceState so a change of reader or connection re-resolves it, as in the wallet.
+    var showReaderPicker by remember { mutableStateOf(false) }
+    val externalReaders = externalNfcReaderStore?.readers?.collectAsState()?.value
+    val externalReader = remember(selectedReaderId, externalReaders) {
+        externalReaders?.find { it.id == selectedReaderId }
+    }
 
-    LaunchedEffect(Unit) {
+    val nfcTagReader = produceState<NfcTagReader?>(initialValue = null, key1 = externalReader) {
+        value = resolveNfcTagReader(externalReader)
+    }.value
+    val isExternalReader = externalReader != null || nfcTagReader?.external == true
+
+    LaunchedEffect(nfcTagReader) {
         if (proximityReaderModel.state.value == ProximityReaderModel.State.IDLE && onNfcHandover != null) {
             if (nfcTagReader != null) {
                 withContext(Platform.promptModel) {
@@ -189,11 +211,37 @@ fun ProximityScreen(
         ) {
             when {
                 proximityReaderModelState != ProximityReaderModel.State.IDLE -> ReadingState(gateTap)
-                else -> TapAtGate(gateTap)
+                else -> TapAtGate(gateTap, isExternal = isExternalReader)
             }
         }
 
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            GhostButton(
+                label = "NFC reader: " + when {
+                    externalReader != null -> externalReader.userDisplayName
+                        ?: externalReader.displayName
+                    else -> "Built-in"
+                },
+                onClick = { showReaderPicker = true },
+            )
+        }
+
         CheckoutFooter(onCancel = onBackClicked)
+    }
+
+    if (showReaderPicker && externalNfcReaderStore != null) {
+        SelectNfcReaderDialog(
+            externalNfcReaderStore = externalNfcReaderStore,
+            selectedReaderId = selectedReaderId,
+            onSelect = { readerId ->
+                showReaderPicker = false
+                onSelectNfcReader(readerId)
+            },
+            onDismiss = { showReaderPicker = false },
+        )
     }
 }
 
@@ -385,7 +433,7 @@ private suspend fun handleTransferOutcome(
  * the only sentence on it.
  */
 @Composable
-private fun TapAtGate(gateTap: GateTap) {
+private fun TapAtGate(gateTap: GateTap, isExternal: Boolean = false) {
     val c = TransitTheme.colors
     val type = TransitTheme.type
     val t = rememberInfiniteTransition(label = "tap")
@@ -431,10 +479,16 @@ private fun TapAtGate(gateTap: GateTap) {
         )
         Spacer(Modifier.height(7.dp))
         Text(
-            if (gateTap == GateTap.ENTRY)
-                "Tap at the entry gate to start the journey."
-            else
-                "Tap at the exit gate to calculate and pay the fare.",
+            when {
+                isExternal && gateTap == GateTap.ENTRY ->
+                    "Tap the card on the external reader to start the journey."
+                isExternal ->
+                    "Tap the card on the external reader to pay the fare."
+                gateTap == GateTap.ENTRY ->
+                    "Tap at the entry gate to start the journey."
+                else ->
+                    "Tap at the exit gate to calculate and pay the fare."
+            },
             style = type.body,
             color = c.ink.copy(alpha = 0.55f),
             textAlign = TextAlign.Center,

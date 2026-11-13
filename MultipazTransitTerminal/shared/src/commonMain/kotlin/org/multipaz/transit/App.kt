@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -13,6 +14,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.nfc.ExternalNfcReaderStore
+import org.multipaz.transit.nfc.ExternalNfcReaders
 import org.multipaz.transit.journey.RpcJourneyStore
 import org.multipaz.transit.journey.Journey
 import org.multipaz.transit.payment.AgeDiscount
@@ -48,6 +51,11 @@ fun App() {
     val state = rememberAppState()
     val coroutineScope = rememberCoroutineScope()
     val readerState by proximityReaderModel.state.collectAsState()
+
+    // null until created - the proximity screens then use the built-in NFC reader only.
+    val externalNfcReaderStore by produceState<ExternalNfcReaderStore?>(initialValue = null) {
+        value = ExternalNfcReaders.getStore()
+    }
 
     LaunchedEffect(Unit) {
         try {
@@ -92,6 +100,9 @@ fun App() {
                             paymentSettler = paymentSettler,
                             amountCents = null, // non amount-binding requst
                             gateTap = GateTap.ENTRY,
+                            externalNfcReaderStore = externalNfcReaderStore,
+                            selectedReaderId = state.selectedExternalNfcReaderId,
+                            onSelectNfcReader = state::selectNfcReader,
                             onNfcHandover = { scanResult ->
                                 handleNfcHandover(
                                     scanResult = scanResult,
@@ -206,6 +217,9 @@ fun App() {
                             paymentSettler = paymentSettler,
                             amountCents = state.settledCents,
                             gateTap = GateTap.EXIT,
+                            externalNfcReaderStore = externalNfcReaderStore,
+                            selectedReaderId = state.selectedExternalNfcReaderId,
+                            onSelectNfcReader = state::selectNfcReader,
                             onNfcHandover = { scanResult ->
                                 handleNfcHandover(
                                     scanResult = scanResult,

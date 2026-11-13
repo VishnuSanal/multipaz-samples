@@ -88,6 +88,11 @@ Key files:
 - `shared/…/Constants.kt` — terminal backend URL, payee account, payee name/id, currency.
 - `shared/…/proximity/ProximityReaderModel.kt` — the ISO 18013-5 reader state machine (engagement →
   request → response), plus `ProximityUtils.kt` for the NFC-handover and QR-scan entry points.
+- `shared/…/nfc/ExternalNfcReaders.kt` — the `ExternalNfcReaderStore` singleton and the resolution
+  of the scan reader (selected external USB reader, falling back to the built-in NFC antenna),
+  mirroring how the multipaz wallet does it; `SelectNfcReaderDialog.kt` is the reader picker shown
+  from the checkout screen. `androidApp/.../MainActivity.kt` auto-configures a supported USB CCID
+  NFC reader when it is plugged in (see `AndroidManifest.xml` + `res/xml/usb_nfc_readers.xml`).
 - `shared/…/proximity/VerificationProximityTransferScreen.kt` — the checkout screen: NFC/QR
   engagement UI, reserves the transaction, builds the `DeviceRequest` with the SCA
   `transaction_data`, and hands the finished `Iso18013PresentmentRecord` back to `App()`.

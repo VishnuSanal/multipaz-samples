@@ -5,11 +5,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.CancellationException
 import org.multipaz.compose.prompt.PromptDialogs
+import org.multipaz.nfc.ExternalNfcReaderStore
+import org.multipaz.pos.nfc.ExternalNfcReaders
 import org.multipaz.pos.payment.RpcPaymentSettler
 import org.multipaz.pos.payment.SettlementResult
 import org.multipaz.pos.payment.extractPaymentCard
@@ -36,6 +40,11 @@ fun App() {
     val proximityReaderModel = remember { ProximityReaderModel() }
     val paymentSettler = remember { RpcPaymentSettler() }
     val state = rememberPosAppState()
+
+    // null until created - the checkout screen then uses the built-in NFC reader only.
+    val externalNfcReaderStore by produceState<ExternalNfcReaderStore?>(initialValue = null) {
+        value = ExternalNfcReaders.getStore()
+    }
 
     LaunchedEffect(Unit) {
         try {
@@ -73,6 +82,9 @@ fun App() {
                                 paymentSettler = paymentSettler,
                                 amountCents = state.settledCents,
                                 promptModel = Platform.promptModel,
+                                externalNfcReaderStore = externalNfcReaderStore,
+                                selectedReaderId = state.selectedExternalNfcReaderId,
+                                onSelectNfcReader = state::selectNfcReader,
                                 onNfcHandover = { scanResult ->
                                     handleNfcHandover(
                                         scanResult = scanResult,

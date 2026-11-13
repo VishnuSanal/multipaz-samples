@@ -43,6 +43,10 @@ class AppState {
     var journeyResumeNotice by mutableStateOf<String?>(null)
         private set
 
+    /** The configured external NFC reader, or `null` to use the built-in reader. */
+    var selectedExternalNfcReaderId by mutableStateOf<String?>(null)
+        private set
+
     /** The approved settlement backing the confirmation screen, or null before one exists. */
     var lastSettlement by mutableStateOf<SettlementResult.Approved?>(null)
         private set
@@ -61,6 +65,11 @@ class AppState {
         fareDiscount = presentedClaims.discount
         journeyResumeNotice = null
         screen = TransitScreen.SELECTION
+    }
+
+    /** Pick which NFC reader to scan with; `null` selects the built-in reader. */
+    fun selectNfcReader(readerId: String?) {
+        selectedExternalNfcReaderId = readerId
     }
 
     /** Simulation complete → wait for the same rider at the exit gate. */

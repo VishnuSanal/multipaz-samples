@@ -36,6 +36,10 @@ class PosAppState {
     var lastFailure by mutableStateOf<SettlementResult.Declined?>(null)
         private set
 
+    /** The configured external NFC reader, or `null` to use the built-in reader. */
+    var selectedExternalNfcReaderId by mutableStateOf<String?>(null)
+        private set
+
     /** Amount shown on the settlement screen. */
     val settlementAmountCents: Long
         get() = lastSettlement?.amountCents ?: settledCents
@@ -57,6 +61,11 @@ class PosAppState {
     fun cancel(reason: SettlementResult.Declined) {
         lastFailure = reason
         screen = PosScreen.FAILURE
+    }
+
+    /** Pick which NFC reader to scan with; `null` selects the built-in reader. */
+    fun selectNfcReader(readerId: String?) {
+        selectedExternalNfcReaderId = readerId
     }
 
     /** Start a fresh transaction from the settlement screen. */

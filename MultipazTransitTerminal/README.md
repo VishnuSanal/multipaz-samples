@@ -58,6 +58,16 @@ The primary configuration points are:
 - `transitBackend/src/main/resources/resources/default_configuration.json` — server port, records
   server URL, app-attestation requirements, and the development payment-processor identity.
 
+### External NFC readers
+
+Besides the device's built-in NFC antenna, the terminal can scan through an external USB NFC
+reader (CCID class devices, e.g. ACR122U). A supported reader plugged into the Android device is
+auto-configured (`androidApp/.../MainActivity.kt` handles `USB_DEVICE_ATTACHED`, see
+`res/xml/usb_nfc_readers.xml`), and the "NFC reader" button on the tap screens opens a picker
+(`shared/.../nfc/`) to select between the built-in antenna and any configured external reader.
+The same pattern is used by the multipaz wallet; the selection is kept in memory
+(`ui/AppState.kt`).
+
 ## Prerequisites
 
 - JDK 17.

@@ -43,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -79,8 +80,11 @@ import org.multipaz.mdoc.request.DocRequestInfo
 import org.multipaz.mdoc.request.TransactionsInfo
 import org.multipaz.mdoc.request.buildDeviceRequest
 import org.multipaz.mdoc.transport.MdocTransportOptions
+import org.multipaz.nfc.ExternalNfcReaderStore
 import org.multipaz.nfc.NfcTagReader
 import org.multipaz.pos.Constants
+import org.multipaz.pos.nfc.SelectNfcReaderDialog
+import org.multipaz.pos.nfc.resolveNfcTagReader
 import org.multipaz.pos.payment.PaymentMethod
 import org.multipaz.pos.payment.ProximityScanMode
 import org.multipaz.pos.payment.RpcPaymentSettler
@@ -98,6 +102,9 @@ fun VerificationProximityTransferScreen(
     promptModel: PromptModel,
     paymentSettler: RpcPaymentSettler,
     amountCents: Long,
+    externalNfcReaderStore: ExternalNfcReaderStore? = null,
+    selectedReaderId: String? = null,
+    onSelectNfcReader: (String?) -> Unit = {},
     onBackClicked: () -> Unit,
     onTransferComplete: suspend (presentmentRecord: Iso18013PresentmentRecord, method: PaymentMethod) -> Unit,
     onTransferError: (error: Throwable) -> Unit,
@@ -160,8 +167,21 @@ fun VerificationProximityTransferScreen(
         }
     }
 
-    val nfcTagReader = NfcTagReader.getReaders().firstOrNull()
-    LaunchedEffect(scanMode, blePermissionState.isGranted, bleEnabledState.isEnabled) {
+    // The reader to scan with: the configured external reader when it is connected (USB
+    // permission requested on the fly), otherwise the built-in reader - resolved in a
+    // produceState so a change of reader or connection re-resolves it, as in the wallet.
+    var showReaderPicker by remember { mutableStateOf(false) }
+    val externalReaders = externalNfcReaderStore?.readers?.collectAsState()?.value
+    val externalReader = remember(selectedReaderId, externalReaders) {
+        externalReaders?.find { it.id == selectedReaderId }
+    }
+
+    val nfcTagReader = produceState<NfcTagReader?>(initialValue = null, key1 = externalReader) {
+        value = resolveNfcTagReader(externalReader)
+    }.value
+    val isExternalReader = externalReader != null || nfcTagReader?.external == true
+
+    LaunchedEffect(nfcTagReader, scanMode, blePermissionState.isGranted, bleEnabledState.isEnabled) {
 
         if (!blePermissionState.isGranted || !bleEnabledState.isEnabled) {
             return@LaunchedEffect
@@ -237,7 +257,7 @@ fun VerificationProximityTransferScreen(
                 })
         } else if (proximityReaderModelState == ProximityReaderModel.State.IDLE) {
             if (scanMode == ProximityScanMode.NFC) {
-                NfcCard()
+                NfcCard(isExternal = isExternalReader)
             } else if (scanMode == ProximityScanMode.QR) {
                 QrCard(
                     onQrCodeScanned = { qrCode ->
@@ -257,6 +277,11 @@ fun VerificationProximityTransferScreen(
                 else
                     scanMode = ProximityScanMode.NFC
             })
+
+            ReaderButton(
+                externalReaderName = externalReader?.userDisplayName ?: externalReader?.displayName,
+                onClick = { showReaderPicker = true },
+            )
         } else {
             CircularProgressIndicator(modifier = Modifier.size(48.dp))
             Text(
@@ -270,6 +295,18 @@ fun VerificationProximityTransferScreen(
 
         CheckoutFooter(
             onCancel = onBackClicked
+        )
+    }
+
+    if (showReaderPicker && externalNfcReaderStore != null) {
+        SelectNfcReaderDialog(
+            externalNfcReaderStore = externalNfcReaderStore,
+            selectedReaderId = selectedReaderId,
+            onSelect = { readerId ->
+                showReaderPicker = false
+                onSelectNfcReader(readerId)
+            },
+            onDismiss = { showReaderPicker = false },
         )
     }
 }
@@ -414,7 +451,7 @@ private fun QrCard(
 }
 
 @Composable
-private fun NfcCard(modifier: Modifier = Modifier, onTap: (() -> Unit)? = null) {
+private fun NfcCard(modifier: Modifier = Modifier, isExternal: Boolean = false, onTap: (() -> Unit)? = null) {
     val c = PosTheme.colors
     val type = PosTheme.type
     val t = rememberInfiniteTransition(label = "nfc")
@@ -442,10 +479,47 @@ private fun NfcCard(modifier: Modifier = Modifier, onTap: (() -> Unit)? = null) 
         Spacer(Modifier.height(24.dp))
         Text("READY FOR TAP", style = type.headlineMd, color = c.primary)
         Text(
-            "HOLD CARD OR DEVICE NEAR TERMINAL",
+            if (isExternal) "HOLD CARD NEAR THE NFC READER" else "HOLD CARD OR DEVICE NEAR TERMINAL",
             style = type.labelSm,
             color = c.onSurface.copy(alpha = 0.6f),
             letterSpacing = 2.sp
+        )
+    }
+}
+
+/**
+ * Shows which NFC reader the terminal will scan with and opens the reader picker, so a
+ * terminal with a USB NFC reader doesn't have to rely on its built-in antenna.
+ */
+@Composable
+private fun ReaderButton(
+    externalReaderName: String?,
+    onClick: () -> Unit
+) {
+    val c = PosTheme.colors
+    val type = PosTheme.type
+    Row(
+        Modifier
+            .padding(16.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(c.surfaceContainerLow)
+            .border(1.dp, c.primary.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+            .padding(16.dp)
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Filled.Contactless,
+            contentDescription = null,
+            tint = c.primary,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            if (externalReaderName != null) "NFC reader: $externalReaderName" else "NFC reader: Built-in",
+            style = type.headlineMd,
+            color = c.primary
         )
     }
 }
